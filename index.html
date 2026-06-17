@@ -330,7 +330,6 @@ function searchKB(query, platform){
       let hit=0;
       for(const kt of kwTokens){ if(qSet.has(kt)) hit++; }
       if(kwTokens.length && hit===kwTokens.length) score+=kwTokens.length*3;
-      else score+=hit;
     }
     const nameSet=new Set(normalize(L(item.name)+' '+item.name.id+' '+item.name.en).split(' ').filter(w=>w.length>2));
     for(const w of words){ if(nameSet.has(w)) score+=2; }
