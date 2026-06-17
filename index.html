@@ -133,6 +133,13 @@
   .key-status{font-size:12px;font-weight:600;margin-top:10px;padding:8px 11px;border-radius:8px}
   .key-on{background:var(--green-bg);color:var(--green)}.key-off{background:var(--surface-2);color:var(--ink-3)}
   @media(max-width:480px){.welcome-title{font-size:19px}.formula-pill{font-size:13px}.chat-area{padding:16px 12px}.tab{font-size:11.5px}.tab .ti{font-size:13px}}
+  /* fix: cegah halaman melebar horizontal di mobile */
+  html,body{max-width:100%;overflow-x:hidden}
+  .app{width:100%;overflow-x:hidden}
+  .chat-area{overflow-x:hidden;min-width:0}
+  .msg-ai,.answer-blocks,.block,.block-body,.msg-user{min-width:0;max-width:100%}
+  .msg-user .bubble{overflow-wrap:anywhere;word-break:break-word}
+  .formula-pill,code{overflow-wrap:anywhere}
 </style>
 </head>
 <body>
