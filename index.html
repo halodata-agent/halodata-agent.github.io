@@ -110,7 +110,7 @@
   .input-row{display:flex;gap:8px;align-items:flex-end}
   .input-wrap{flex:1;background:var(--bg);border:2px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color .15s}
   .input-wrap:focus-within{border-color:var(--green)}
-  textarea{width:100%;font-family:var(--font);font-size:14px;color:var(--ink);background:transparent;border:none;outline:none;resize:none;padding:11px 14px;min-height:44px;max-height:120px;line-height:1.5}
+  textarea{width:100%;font-family:var(--font);font-size:16px;color:var(--ink);background:transparent;border:none;outline:none;resize:none;padding:11px 14px;min-height:44px;max-height:120px;line-height:1.5}
   textarea::placeholder{color:var(--ink-3)}
   .send-btn{width:44px;height:44px;background:var(--green);border:none;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px;color:#fff;transition:all .13s}
   .send-btn:hover:not(:disabled){background:#155c31;transform:scale(1.05)}
@@ -133,13 +133,16 @@
   .key-status{font-size:12px;font-weight:600;margin-top:10px;padding:8px 11px;border-radius:8px}
   .key-on{background:var(--green-bg);color:var(--green)}.key-off{background:var(--surface-2);color:var(--ink-3)}
   @media(max-width:480px){.welcome-title{font-size:19px}.formula-pill{font-size:13px}.chat-area{padding:16px 12px}.tab{font-size:11.5px}.tab .ti{font-size:13px}}
-  /* fix: cegah halaman melebar horizontal di mobile */
+  /* fix: cegah halaman melebar / auto-zoom di mobile */
   html,body{max-width:100%;overflow-x:hidden}
-  .app{width:100%;overflow-x:hidden}
-  .chat-area{overflow-x:hidden;min-width:0}
-  .msg-ai,.answer-blocks,.block,.block-body,.msg-user{min-width:0;max-width:100%}
+  .app,.header,.chat-area,.input-area{max-width:100%;overflow-x:hidden}
+  .chat-area{min-width:0}
+  .header-top,.header-text{min-width:0}
+  .msg-ai,.answer-blocks,.block,.block-body,.msg-user,.bubble{min-width:0;max-width:100%}
   .msg-user .bubble{overflow-wrap:anywhere;word-break:break-word}
-  .formula-pill,code{overflow-wrap:anywhere}
+  .formula-pill,.formula-pill *,code{overflow-wrap:anywhere;word-break:break-word}
+  .anatomy-row,.related-item{flex-wrap:wrap}
+  .mini-sheet{max-width:100%}
 </style>
 </head>
 <body>
@@ -337,9 +340,10 @@ function autoResize(el){el.style.height='auto';el.style.height=Math.min(el.scrol
 function handleKey(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendMessage();}}
 function sendExample(q){const ta=document.getElementById('userInput');ta.value=q;autoResize(ta);sendMessage();}
 function scrollDown(){const a=document.getElementById('chatArea');a.scrollTop=a.scrollHeight;}
-function appendEl(html){const w=document.createElement('div');w.innerHTML=html;document.getElementById('chatArea').appendChild(w.firstElementChild);scrollDown();}
-function showUserMsg(tx){appendEl('<div class="msg-user"><div class="bubble">'+esc(tx)+'</div></div>');}
-function showThinking(msg){const el=document.createElement('div');el.className='msg-ai';el.id='thinkingEl';el.innerHTML='<div class="ai-header"><div class="ai-avatar">📊</div><span class="ai-name">Halodata</span></div><div class="thinking"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span class="thinking-text">'+(msg||t('thinking'))+'</span></div>';document.getElementById('chatArea').appendChild(el);scrollDown();}
+function scrollSmart(){const a=document.getElementById('chatArea');const q=window.__lastQ;if(q&&a.contains(q)){a.scrollTo({top:Math.max(0,q.offsetTop-12),behavior:'smooth'});}else{a.scrollTop=a.scrollHeight;}}
+function appendEl(html,asQuestion){const w=document.createElement('div');w.innerHTML=html;const el=w.firstElementChild;document.getElementById('chatArea').appendChild(el);if(asQuestion)window.__lastQ=el;scrollSmart();return el;}
+function showUserMsg(tx){appendEl('<div class="msg-user"><div class="bubble">'+esc(tx)+'</div></div>',true);}
+function showThinking(msg){const el=document.createElement('div');el.className='msg-ai';el.id='thinkingEl';el.innerHTML='<div class="ai-header"><div class="ai-avatar">📊</div><span class="ai-name">Halodata</span></div><div class="thinking"><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div><span class="thinking-text">'+(msg||t('thinking'))+'</span></div>';document.getElementById('chatArea').appendChild(el);scrollSmart();}
 function removeThinking(){const e=document.getElementById('thinkingEl');if(e)e.remove();}
 function copyText(text,btn){navigator.clipboard.writeText(text).catch(()=>{const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);});const h=btn.querySelector('.copy-hint');btn.classList.add('copied');h.textContent=t('copied');setTimeout(()=>{btn.classList.remove('copied');h.textContent=t('copy');},2000);}
 
