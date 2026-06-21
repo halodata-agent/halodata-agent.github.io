@@ -143,6 +143,12 @@
   .formula-pill,.formula-pill *,code{overflow-wrap:anywhere;word-break:break-word}
   .anatomy-row,.related-item{flex-wrap:wrap}
   .mini-sheet{max-width:100%}
+  /* mode selector */
+  .modes{display:flex;gap:6px;margin-top:8px}
+  .mode-pill{flex:1;padding:8px 6px;border:1.5px solid var(--border);background:var(--surface);border-radius:9px;font-family:var(--font);font-size:11.5px;font-weight:700;color:var(--ink-2);cursor:pointer;transition:all .14s;display:flex;align-items:center;justify-content:center;gap:5px;line-height:1.1}
+  .mode-pill:hover{border-color:var(--border-mid)}
+  .mode-pill.active{background:var(--green);color:#fff;border-color:var(--green);box-shadow:0 2px 8px rgba(26,110,60,.22)}
+  @media(max-width:480px){.mode-pill{font-size:10.5px;padding:7px 4px}}
 </style>
 </head>
 <body>
@@ -163,6 +169,11 @@
     <div class="tabs" id="tabs">
       <button class="tab active" data-plat="spreadsheet" onclick="setPlatform('spreadsheet')"><span class="ti">📗</span> <span data-i18n="tab_sheet">Excel / Sheets</span></button>
       <button class="tab" data-plat="sql" onclick="setPlatform('sql')"><span class="ti">🗄️</span> SQL</button>
+    </div>
+    <div class="modes" id="modes">
+      <button class="mode-pill active" data-mode="ask" onclick="setAppMode('ask')">💬 <span data-i18n="mode_ask">Tanya Rumus</span></button>
+      <button class="mode-pill" data-mode="fix" onclick="setAppMode('fix')">🛠️ <span data-i18n="mode_fix">Perbaiki Error</span></button>
+      <button class="mode-pill" data-mode="goal" onclick="setAppMode('goal')">🎯 <span data-i18n="mode_goal">Bantu dari Tujuan</span></button>
     </div>
   </header>
   <div class="chat-area" id="chatArea"></div>
@@ -238,7 +249,19 @@ const T = {
     set_label:"Anthropic API Key (opsional)",
     set_note:"🔒 Key disimpan hanya di perangkatmu (localStorage), tidak dikirim ke mana pun selain langsung ke Anthropic. Kosongkan untuk mode offline penuh.",
     set_save:"Simpan",set_clear:"Hapus Key",set_close:"Tutup",
-    key_on:"✓ API key aktif — mode Hybrid",key_off:"○ Belum ada key — mode Offline penuh"
+    key_on:"✓ API key aktif — mode Hybrid",key_off:"○ Belum ada key — mode Offline penuh",
+    mode_ask:"Tanya Rumus",mode_fix:"Perbaiki Error",mode_goal:"Bantu dari Tujuan",
+    ph_fix:"Tempel rumus/query yang error + pesan errornya. Contoh: '=VLOOKUP(A2,B:D,2) hasilnya #N/A'",
+    ph_goal:"Ceritakan data yang kamu punya & tujuanmu. Contoh: 'punya kolom tanggal & jumlah, mau total per bulan'",
+    welcome_title_fix:"Ada rumus yang error? 🛠️<br>Tempel di sini",
+    welcome_sub_fix:"Tempel rumus/query yang bermasalah beserta pesan errornya — Halodata akan <strong>menemukan penyebabnya</strong> lalu memberi versi yang sudah diperbaiki.",
+    welcome_title_goal:"Punya data & tujuan? 🎯<br>Biar dipetakan",
+    welcome_sub_goal:"Ceritakan data yang kamu miliki dan apa yang ingin dicapai — Halodata akan <strong>menyarankan rumus & langkahnya</strong>.",
+    needkey_title:"Fitur ini menggunakan AI",
+    needkey_body:"Mode ini menganalisis kasus spesifikmu, jadi membutuhkan API key Anthropic milikmu sendiri.",
+    needkey_btn:"⚙️ Tambah API key",
+    lbl_fixformula:"Rumus yang Sudah Diperbaiki",lbl_goalformula:"Rumus yang Disarankan",
+    lbl_fixformula_sql:"Query yang Sudah Diperbaiki",lbl_goalformula_sql:"Query yang Disarankan"
   },
   en:{
     tagline:"Ask spreadsheet formulas & SQL queries",
@@ -281,7 +304,19 @@ const T = {
     set_label:"Anthropic API Key (optional)",
     set_note:"🔒 The key is stored only on your device (localStorage), never sent anywhere except directly to Anthropic. Leave empty for full offline mode.",
     set_save:"Save",set_clear:"Clear Key",set_close:"Close",
-    key_on:"✓ API key active — Hybrid mode",key_off:"○ No key yet — full Offline mode"
+    key_on:"✓ API key active — Hybrid mode",key_off:"○ No key yet — full Offline mode",
+    mode_ask:"Ask a Formula",mode_fix:"Fix an Error",mode_goal:"From a Goal",
+    ph_fix:"Paste the formula/query that errors + the error message. e.g. '=VLOOKUP(A2,B:D,2) returns #N/A'",
+    ph_goal:"Describe the data you have & your goal. e.g. 'I have date & amount columns, I want a monthly total'",
+    welcome_title_fix:"Got a broken formula? 🛠️<br>Paste it here",
+    welcome_sub_fix:"Paste the problematic formula/query along with the error message — Halodata will <strong>find the cause</strong> and give you a corrected version.",
+    welcome_title_goal:"Have data & a goal? 🎯<br>Let's map it out",
+    welcome_sub_goal:"Describe the data you have and what you want to achieve — Halodata will <strong>recommend the formula & steps</strong>.",
+    needkey_title:"This feature uses AI",
+    needkey_body:"This mode analyzes your specific case, so it needs your own Anthropic API key.",
+    needkey_btn:"⚙️ Add an API key",
+    lbl_fixformula:"Corrected Formula",lbl_goalformula:"Recommended Formula",
+    lbl_fixformula_sql:"Corrected Query",lbl_goalformula_sql:"Recommended Query"
   }
 };
 function t(k){return (T[LANG] && T[LANG][k]!==undefined)?T[LANG][k]:T.id[k];}
@@ -306,9 +341,33 @@ const EXAMPLES = {
     {q:{id:"gabungkan dua tabel",en:"combine two tables"},icon:"🔗",label:{id:"Menggabungkan dua tabel (JOIN)",en:"Combine two tables (JOIN)"}}
   ]
 };
+const EX_FIX = {
+  spreadsheet:[
+    {q:{id:"=VLOOKUP(A2,B:D,2,0) hasilnya #N/A padahal datanya ada",en:"=VLOOKUP(A2,B:D,2,0) returns #N/A but the data exists"},icon:"🛠️",label:{id:"VLOOKUP #N/A padahal data ada",en:"VLOOKUP #N/A but data exists"}},
+    {q:{id:"=SUM(A1:A10 muncul error, apa yang salah?",en:"=SUM(A1:A10 shows an error, what's wrong?"},icon:"❗",label:{id:"Rumus error karena kurang kurung",en:"Error from a missing parenthesis"}},
+    {q:{id:"rumus saya menampilkan #DIV/0!, bagaimana cara memperbaikinya?",en:"my formula shows #DIV/0!, how do I fix it?"},icon:"➗",label:{id:"Muncul #DIV/0! saat membagi",en:"#DIV/0! when dividing"}}
+  ],
+  sql:[
+    {q:{id:"SELECT name, COUNT(*) FROM orders error 'must appear in GROUP BY clause'",en:"SELECT name, COUNT(*) FROM orders error 'must appear in GROUP BY clause'"},icon:"🛠️",label:{id:"Error 'must appear in GROUP BY'",en:"'must appear in GROUP BY' error"}},
+    {q:{id:"query saya pakai WHERE untuk hasil COUNT tapi malah error",en:"my query uses WHERE on a COUNT result but it errors"},icon:"❗",label:{id:"Salah pakai WHERE pada agregasi",en:"Wrong WHERE on an aggregate"}}
+  ]
+};
+const EX_GOAL = {
+  spreadsheet:[
+    {q:{id:"saya punya kolom tanggal dan nominal, ingin total penjualan per bulan",en:"I have date and amount columns, I want total sales per month"},icon:"🎯",label:{id:"Total per bulan dari tanggal & nominal",en:"Monthly totals from date & amount"}},
+    {q:{id:"punya daftar nama lengkap, ingin pisahkan jadi nama depan dan belakang",en:"I have full names, I want to split them into first and last name"},icon:"✂️",label:{id:"Pisahkan nama depan & belakang",en:"Split first & last name"}},
+    {q:{id:"punya data penjualan per baris, ingin tahu produk terlaris",en:"I have row-level sales data, I want to find the best-selling product"},icon:"🏆",label:{id:"Cari produk terlaris dari data penjualan",en:"Find the best-selling product"}}
+  ],
+  sql:[
+    {q:{id:"punya tabel transaksi, ingin pelanggan dengan total belanja terbanyak",en:"I have a transactions table, I want the customers who spent the most"},icon:"🎯",label:{id:"Pelanggan dengan belanja terbanyak",en:"Top-spending customers"}},
+    {q:{id:"punya tabel pesanan & pelanggan, ingin tahu nama pelanggan tiap pesanan",en:"I have orders & customers tables, I want the customer name per order"},icon:"🔗",label:{id:"Gabung pesanan dengan nama pelanggan",en:"Join orders with customer names"}}
+  ]
+};
+function modeExamples(){return currentMode==='fix'?EX_FIX:currentMode==='goal'?EX_GOAL:EXAMPLES;}
 
 /* ════════════ STATE ════════════ */
 let currentPlatform='spreadsheet';
+let currentMode='ask';
 let loading=false;
 function getKey(){try{return localStorage.getItem('halodata_key')||'';}catch(e){return '';}}
 
@@ -430,10 +489,22 @@ function showById(id){
 /* ════════════ AI FALLBACK ════════════ */
 function extractJSON(text){try{return JSON.parse(text.trim());}catch(_){}let c=text.replace(/^```(?:json)?\s*/m,'').replace(/```\s*$/m,'').trim();try{return JSON.parse(c);}catch(_){}const s=text.indexOf('{'),en=text.lastIndexOf('}');if(s!==-1&&en>s){try{return JSON.parse(text.slice(s,en+1));}catch(_){}}throw new Error('parse');}
 
-function aiSystem(isSQL){
+function aiSystem(isSQL, mode){
   const langName = LANG==='en'?'English':'Indonesian';
-  if(isSQL) return 'You are Halodata, an SQL helper for beginners. Reply ONLY valid JSON (no other text, no code fence): {"formula":{"sql":"SELECT ...","example":"..."},"illus":{"title":"...","headers":["col1","col2"],"rows":[["d1","d2"]],"note":"..."},"expl":{"summary":"...","anatomy":[{"part":"...","meaning":"..."}],"tip":"..."},"related":[{"name":"CMD","kegunaan":"..."}]}. Answer in '+langName+', friendly for beginners.';
-  return 'You are Halodata, an Excel & Google Sheets helper for beginners. Reply ONLY valid JSON (no other text, no code fence): {"formula":{"excel":"=...","sheets":"=...","example":"..."},"illus":{"title":"...","headers":["Column A","Column B"],"rows":[["data","=FORMULA()"]],"note":"..."},"expl":{"summary":"...","anatomy":[{"part":"...","meaning":"..."}],"tip":"..."},"related":[{"name":"=FORMULA()","kegunaan":"..."}]}. If Excel and Sheets differ, fill both; if same, use the same string for both. Answer in '+langName+', friendly for beginners.';
+  const schema = isSQL
+    ? '{"formula":{"sql":"SELECT ...","example":"..."},"illus":{"title":"...","headers":["col1","col2"],"rows":[["d1","d2"]],"note":"..."},"expl":{"summary":"...","anatomy":[{"part":"...","meaning":"..."}],"tip":"..."},"related":[{"name":"CMD","kegunaan":"..."}]}'
+    : '{"formula":{"excel":"=...","sheets":"=...","example":"..."},"illus":{"title":"...","headers":["Column A","Column B"],"rows":[["data","=FORMULA()"]],"note":"..."},"expl":{"summary":"...","anatomy":[{"part":"...","meaning":"..."}],"tip":"..."},"related":[{"name":"=FORMULA()","kegunaan":"..."}]}';
+  const tool = isSQL ? 'SQL' : 'Excel & Google Sheets';
+  let role;
+  if(mode==='fix'){
+    role='You are Halodata, a '+tool+' debugging helper for beginners. The user will paste a formula/query that errors or returns the wrong result, possibly with an error message. Diagnose clearly WHAT is wrong and WHY in expl.summary; put the CORRECTED, working '+(isSQL?'query':'formula')+' in "formula"; in expl.anatomy list the specific fixes (each {part, meaning}); in expl.tip give one tip to avoid this error next time; use illus to show a small before/after-style example if helpful.';
+  } else if(mode==='goal'){
+    role='You are Halodata, a '+tool+' solution mapper for beginners. The user describes the data they have (columns/tables) and the goal they want to achieve. Recommend the best approach: put a short plain-language plan in expl.summary; the recommended '+(isSQL?'query':'formula')+' in "formula"; the step-by-step in expl.anatomy (each {part, meaning} as a numbered step); a small example of their data and the result in illus; alternative '+(isSQL?'commands':'formulas')+' in related.';
+  } else {
+    role='You are Halodata, a '+tool+' helper for beginners. Answer the user\'s question with the right '+(isSQL?'query':'formula')+', a clear explanation, and a small example.';
+  }
+  const sameNote = isSQL ? '' : ' If Excel and Sheets differ, fill both; if same, use the same string for both.';
+  return role+' Reply ONLY valid JSON (no other text, no code fence): '+schema+'.'+sameNote+' Answer in '+langName+', friendly for beginners.';
 }
 
 function renderAI(d,isSQL){
@@ -443,7 +514,8 @@ function renderAI(d,isSQL){
   else{const ex=f.excel||'',sh=f.sheets||ex; if(ex===sh){formulaInner=pillHTML(ex);}else{formulaInner='<div class="formula-variant-label"><span class="vi">📘</span>'+t('excel_ver')+'</div>'+pillHTML(ex)+'<div class="formula-variant-label" style="margin-top:12px"><span class="vi">📗</span>'+t('sheets_ver')+'</div>'+pillHTML(sh);}}
   const exHTML=f.example?'<div class="formula-example"><strong>'+t('example_word')+'</strong> <code>'+esc(f.example)+'</code></div>':'';
   const sepHTML=(!isSQL)?'<div class="sep-note">'+t('sep_note')+'</div>':'';
-  const b1='<div class="block b-formula"><div class="block-header"><span class="block-icon">'+(isSQL?'🗄️':'🔢')+'</span><span class="block-label">'+(isSQL?t('lbl_formula_sql'):t('lbl_formula_sheet'))+'</span></div><div class="block-body">'+formulaInner+exHTML+sepHTML+'</div></div>';
+  const fLbl=currentMode==='fix'?(isSQL?t('lbl_fixformula_sql'):t('lbl_fixformula')):currentMode==='goal'?(isSQL?t('lbl_goalformula_sql'):t('lbl_goalformula')):(isSQL?t('lbl_formula_sql'):t('lbl_formula_sheet'));
+  const b1='<div class="block b-formula"><div class="block-header"><span class="block-icon">'+(isSQL?'🗄️':'🔢')+'</span><span class="block-label">'+fLbl+'</span></div><div class="block-body">'+formulaInner+exHTML+sepHTML+'</div></div>';
   let b2='';const il=d.illus||{};
   if(il.headers&&il.rows){
     const cl=il.headers.map((_,i)=>'<th class="ch">'+(isSQL?'':String.fromCharCode(65+i))+'</th>').join('');
@@ -463,10 +535,12 @@ function renderAI(d,isSQL){
 async function askAI(query){
   const key=getKey(); if(!key){openSettings();return;}
   const isSQL=currentPlatform==='sql';
+  const mode=currentMode;
+  const label=mode==='fix'?'Formula/query and error from the user:\n':mode==='goal'?"User's data and goal:\n":'Question: ';
   showThinking(t('thinking_ai'));
   loading=true;document.getElementById('sendBtn').disabled=true;
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1500,messages:[{role:'user',content:aiSystem(isSQL)+'\n\nQuestion: '+query}]})});
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1500,messages:[{role:'user',content:aiSystem(isSQL,mode)+'\n\n'+label+query}]})});
     const data=await res.json();
     if(!res.ok) throw new Error(data&&data.error&&data.error.message?data.error.message:('HTTP '+res.status));
     const raw=(data.content||[]).map(c=>c.text||'').join('').trim();
@@ -490,9 +564,16 @@ function sendMessage(){
   const ta=document.getElementById('userInput');const text=ta.value.trim();if(!text)return;
   const wb=document.getElementById('welcomeBlock');if(wb)wb.remove();
   ta.value='';autoResize(ta);showUserMsg(text);
+  if(currentMode==='fix'||currentMode==='goal'){
+    if(!getKey()){showNeedKey();ta.focus();return;}
+    askAI(text);ta.focus();return;
+  }
   const hit=searchKB(text,currentPlatform);
   if(hit){renderEntry(hit,'local');ta.focus();return;}
   showNotFound(text);ta.focus();
+}
+function showNeedKey(){
+  appendEl('<div class="msg-ai"><div class="ai-header"><div class="ai-avatar">📊</div><span class="ai-name">Halodata</span></div><div class="notfound"><strong>'+t('needkey_title')+'</strong><br>'+t('needkey_body')+'<br><button class="nf-btn" onclick="openSettings()">'+t('needkey_btn')+'</button></div></div>');
 }
 
 /* ════════════ SETTINGS / LANG / PLATFORM ════════════ */
@@ -507,8 +588,8 @@ function applyStaticI18n(){
   document.getElementById('tagline').textContent=t('tagline');
   document.getElementById('inputHint').textContent=t('hint');
   document.querySelector('[data-i18n="tab_sheet"]').textContent=t('tab_sheet');
-  const ta=document.getElementById('userInput');
-  ta.placeholder = currentPlatform==='sql'?t('ph_sql'):t('ph_sheet');
+  document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.dataset.i18n;if(k&&t(k)!==undefined)el.textContent=t(k);});
+  setPlaceholder();
   document.getElementById('set_title').textContent=t('set_title');
   document.getElementById('set_desc').innerHTML=t('set_desc');
   document.getElementById('set_label').textContent=t('set_label');
@@ -525,17 +606,25 @@ function setLang(l){
   applyStaticI18n();
   renderWelcome();
 }
+function phText(){return currentMode==='fix'?t('ph_fix'):currentMode==='goal'?t('ph_goal'):(currentPlatform==='sql'?t('ph_sql'):t('ph_sheet'));}
+function setPlaceholder(){const ta=document.getElementById('userInput');if(ta)ta.placeholder=phText();}
 function setPlatform(p){
   currentPlatform=p;
   document.querySelectorAll('.tab').forEach(tb=>tb.classList.toggle('active',tb.dataset.plat===p));
-  document.getElementById('userInput').placeholder=p==='sql'?t('ph_sql'):t('ph_sheet');
+  setPlaceholder();
+  renderWelcome();
+}
+function setAppMode(m){
+  currentMode=m;
+  document.querySelectorAll('.mode-pill').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
+  setPlaceholder();
   renderWelcome();
 }
 function renderWelcome(){
   const isSQL=currentPlatform==='sql';
-  const ex=EXAMPLES[currentPlatform].map(e=>'<button class="example-btn" onclick="sendExample(this.dataset.q)" data-q="'+esc(L(e.q))+'"><span class="eicon">'+e.icon+'</span><span>'+esc(L(e.label))+'</span></button>').join('');
-  const title=isSQL?t('welcome_title_sql'):t('welcome_title_sheet');
-  const sub=isSQL?t('welcome_sub_sql'):t('welcome_sub_sheet');
+  const ex=modeExamples()[currentPlatform].map(e=>'<button class="example-btn" onclick="sendExample(this.dataset.q)" data-q="'+esc(L(e.q))+'"><span class="eicon">'+e.icon+'</span><span>'+esc(L(e.label))+'</span></button>').join('');
+  const title=currentMode==='fix'?t('welcome_title_fix'):currentMode==='goal'?t('welcome_title_goal'):(isSQL?t('welcome_title_sql'):t('welcome_title_sheet'));
+  const sub=currentMode==='fix'?t('welcome_sub_fix'):currentMode==='goal'?t('welcome_sub_goal'):(isSQL?t('welcome_sub_sql'):t('welcome_sub_sheet'));
   document.getElementById('chatArea').innerHTML='<div id="welcomeBlock"><p class="welcome-title">'+title+'</p><p class="welcome-sub">'+sub+'</p><p class="examples-label">'+t('examples_label')+'</p><div class="examples-grid">'+ex+'</div></div>';
 }
 
