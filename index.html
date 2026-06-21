@@ -149,6 +149,29 @@
   .mode-pill:hover{border-color:var(--border-mid)}
   .mode-pill.active{background:var(--green);color:#fff;border-color:var(--green);box-shadow:0 2px 8px rgba(26,110,60,.22)}
   @media(max-width:480px){.mode-pill{font-size:10.5px;padding:7px 4px}}
+  /* main wrapper (chat+input) */
+  .main{display:flex;flex-direction:column;flex:1;min-height:0;min-width:0;max-width:100%;overflow-x:hidden}
+  /* ===== Desktop: sidebar layout ===== */
+  @media(min-width:900px){
+    .app{flex-direction:row;max-width:1200px;height:100dvh;box-shadow:0 0 0 1px var(--border),0 10px 40px rgba(0,0,0,.06)}
+    .header{width:280px;flex-shrink:0;display:flex;flex-direction:column;height:100dvh;overflow-y:auto;border-bottom:none;border-right:1.5px solid var(--border);padding:22px 18px}
+    .header-top{flex-wrap:wrap;align-items:center;gap:10px}
+    .header-text h1{font-size:20px}
+    .header-actions{margin-left:0;order:3;flex-basis:100%;margin-top:10px;flex-wrap:wrap}
+    .tabs{flex-direction:column;margin-top:22px;background:transparent;padding:0;gap:8px}
+    .tab{justify-content:flex-start;border:1.5px solid var(--border);background:var(--surface);padding:10px 12px;font-size:13px}
+    .tab.active{border-color:var(--green);background:var(--green-bg);color:var(--green)}
+    .modes{flex-direction:column;margin-top:16px;gap:8px}
+    .mode-pill{justify-content:flex-start;font-size:13px;padding:11px 12px}
+    .main{height:100dvh}
+    .chat-area{padding:30px 32px;gap:22px}
+    .chat-area>*{width:100%;max-width:840px;margin-left:auto;margin-right:auto}
+    .input-area{padding:16px 32px 22px}
+    .input-row,.input-hint{max-width:840px;margin-left:auto;margin-right:auto}
+    .examples-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .welcome-title{font-size:26px}
+    .welcome-sub{font-size:15px}
+  }
 </style>
 </head>
 <body>
@@ -176,6 +199,7 @@
       <button class="mode-pill" data-mode="goal" onclick="setAppMode('goal')">🎯 <span data-i18n="mode_goal">Bantu dari Tujuan</span></button>
     </div>
   </header>
+  <main class="main">
   <div class="chat-area" id="chatArea"></div>
   <div class="input-area">
     <div class="input-row">
@@ -184,6 +208,7 @@
     </div>
     <p class="input-hint" id="inputHint"></p>
   </div>
+  </main>
 </div>
 
 <div class="overlay" id="overlay" onclick="if(event.target===this)closeSettings()">
