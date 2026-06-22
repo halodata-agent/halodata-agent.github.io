@@ -144,8 +144,8 @@
   .anatomy-row,.related-item{flex-wrap:wrap}
   .mini-sheet{max-width:100%}
   /* mode selector */
-  .modes{display:flex;gap:6px;margin-top:8px}
-  .mode-pill{flex:1;padding:8px 6px;border:1.5px solid var(--border);background:var(--surface);border-radius:9px;font-family:var(--font);font-size:11.5px;font-weight:700;color:var(--ink-2);cursor:pointer;transition:all .14s;display:flex;align-items:center;justify-content:center;gap:5px;line-height:1.1}
+  .modes{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .mode-pill{flex:1 1 28%;padding:8px 6px;border:1.5px solid var(--border);background:var(--surface);border-radius:9px;font-family:var(--font);font-size:11.5px;font-weight:700;color:var(--ink-2);cursor:pointer;transition:all .14s;display:flex;align-items:center;justify-content:center;gap:5px;line-height:1.1}
   .mode-pill:hover{border-color:var(--border-mid)}
   .mode-pill.active{background:var(--green);color:#fff;border-color:var(--green);box-shadow:0 2px 8px rgba(26,110,60,.22)}
   @media(max-width:480px){.mode-pill{font-size:10.5px;padding:7px 4px}}
@@ -201,6 +201,8 @@
   .quiz-stats{font-size:14px;color:var(--ink-2);line-height:1.7}
   .quiz-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:16px}
   .nf-btn.ghost{background:var(--surface);color:var(--ink-2);border:1.5px solid var(--border)}
+  .try-disc{background:var(--orange-bg);border:1.5px solid var(--orange-mid);color:var(--ink-2);border-radius:var(--radius);padding:13px 15px;font-size:13px;line-height:1.55}
+  .try-disc .nf-btn{margin-top:10px}
 </style>
 </head>
 <body>
@@ -227,6 +229,7 @@
       <button class="mode-pill active" data-mode="ask" onclick="setAppMode('ask')">💬 <span data-i18n="mode_ask">Tanya Rumus</span></button>
       <button class="mode-pill" data-mode="fix" onclick="setAppMode('fix')">🛠️ <span data-i18n="mode_fix">Perbaiki Error</span></button>
       <button class="mode-pill" data-mode="goal" onclick="setAppMode('goal')">🎯 <span data-i18n="mode_goal">Bantu dari Tujuan</span></button>
+      <button class="mode-pill" data-mode="try" onclick="setAppMode('try')">🧪 <span data-i18n="mode_try">Try it Yourself</span></button>
       <button class="mode-pill" data-mode="quiz" onclick="setAppMode('quiz')">🎓 <span data-i18n="mode_quiz">Quiz</span></button>
     </div>
   </header>
@@ -438,6 +441,13 @@ const T = {
     welcome_title_python:"Halo! 👋<br>Mau tanya apa soal Python?",
     welcome_sub_python:"Tulis apa yang ingin kamu lakukan dengan kode — <strong>tak perlu hafal sintaks Python.</strong> Dijelaskan langkah demi langkah.",
     mode_quiz:"Quiz",
+    mode_try:"Try it Yourself",
+    ph_try:"Tulis rumus/query/kode-mu di sini. Contoh: =IF(A2>75, \"Lulus\", \"Gagal\")",
+    welcome_title_try:"Coba sendiri! 🧪<br>Lihat hasilnya",
+    welcome_sub_try:"Dengan editor <strong>Try it Yourself</strong>, kamu bisa menulis rumus, query, atau kode lalu langsung melihat hasil dan penjelasannya.",
+    lbl_tryformula:"Yang kamu coba",
+    try_disc:"Jawaban offline ini berbasis contoh dari basis data, jadi ilustrasi atau angkanya bisa <strong>tidak sinkron</strong> dengan input persismu. Untuk hasil yang dihitung tepat atau input yang kompleks, coba <strong>mode Hybrid</strong> dengan memasukkan API key Anthropic-mu.",
+    try_disc_btn:"⚙️ Aktifkan Hybrid (API key)",
     quiz_title:"Quiz Berjenjang",
     quiz_sub:"Uji pemahamanmu tentang <strong>{plat}</strong>. Pilih level untuk mulai — tiap jawaban benar dapat poin!",
     quiz_level:"Level",quiz_lv1:"Pemula",quiz_lv2:"Menengah",quiz_lv3:"Mahir",
@@ -507,6 +517,13 @@ const T = {
     welcome_title_python:"Hi! 👋<br>What do you want to know about Python?",
     welcome_sub_python:"Just describe what you want to do with code — <strong>no need to memorize Python syntax.</strong> Explained step by step.",
     mode_quiz:"Quiz",
+    mode_try:"Try it Yourself",
+    ph_try:"Type your formula/query/code here. e.g. =IF(A2>75, \"Pass\", \"Fail\")",
+    welcome_title_try:"Try it yourself! 🧪<br>See the result",
+    welcome_sub_try:"With the <strong>Try it Yourself</strong> editor, you can write a formula, query, or code and instantly see the result and how it works.",
+    lbl_tryformula:"What you tried",
+    try_disc:"This offline answer is based on database examples, so the illustration or values may <strong>not match</strong> your exact input. For precisely computed results or complex inputs, try <strong>Hybrid mode</strong> by adding your Anthropic API key.",
+    try_disc_btn:"⚙️ Enable Hybrid (API key)",
     quiz_title:"Leveled Quiz",
     quiz_sub:"Test your understanding of <strong>{plat}</strong>. Pick a level to start — each correct answer earns points!",
     quiz_level:"Level",quiz_lv1:"Beginner",quiz_lv2:"Intermediate",quiz_lv3:"Advanced",
@@ -577,7 +594,23 @@ const EX_GOAL = {
     {q:{id:"punya teks, ingin hitung berapa kali sebuah kata muncul",en:"I have text, I want to count how often a word appears"},icon:"🔤",label:{id:"Hitung frekuensi kata",en:"Count word frequency"}}
   ]
 };
-function modeExamples(){return currentMode==='fix'?EX_FIX:currentMode==='goal'?EX_GOAL:EXAMPLES;}
+const EX_TRY = {
+  spreadsheet:[
+    {q:{id:'=IF(A2>=75, "Lulus", "Gagal")',en:'=IF(A2>=75, "Pass", "Fail")'},icon:"🧪",label:{id:"Coba rumus IF ini",en:"Try this IF formula"}},
+    {q:{id:'=SUMIF(B2:B10, ">100", C2:C10)',en:'=SUMIF(B2:B10, ">100", C2:C10)'},icon:"➕",label:{id:"Coba SUMIF berkriteria",en:"Try a criteria SUMIF"}},
+    {q:{id:'=VLOOKUP("A001", A2:C50, 3, FALSE)',en:'=VLOOKUP("A001", A2:C50, 3, FALSE)'},icon:"🔍",label:{id:"Coba VLOOKUP ini",en:"Try this VLOOKUP"}}
+  ],
+  sql:[
+    {q:{id:"SELECT city, COUNT(*) FROM users GROUP BY city HAVING COUNT(*) > 5;",en:"SELECT city, COUNT(*) FROM users GROUP BY city HAVING COUNT(*) > 5;"},icon:"🧪",label:{id:"Coba GROUP BY + HAVING",en:"Try GROUP BY + HAVING"}},
+    {q:{id:"SELECT * FROM orders ORDER BY amount DESC LIMIT 3;",en:"SELECT * FROM orders ORDER BY amount DESC LIMIT 3;"},icon:"📊",label:{id:"Coba ORDER BY + LIMIT",en:"Try ORDER BY + LIMIT"}}
+  ],
+  python:[
+    {q:{id:"[x*x for x in range(10) if x % 2 == 0]",en:"[x*x for x in range(10) if x % 2 == 0]"},icon:"🧪",label:{id:"Coba list comprehension ini",en:"Try this list comprehension"}},
+    {q:{id:"print(sorted(['banana','apple','kiwi'], key=len))",en:"print(sorted(['banana','apple','kiwi'], key=len))"},icon:"🔤",label:{id:"Coba sorted dengan key",en:"Try sorted with a key"}},
+    {q:{id:"{w: len(w) for w in 'satu dua tiga'.split()}",en:"{w: len(w) for w in 'one two three'.split()}"},icon:"🗂️",label:{id:"Coba dict comprehension",en:"Try a dict comprehension"}}
+  ]
+};
+function modeExamples(){return currentMode==='fix'?EX_FIX:currentMode==='goal'?EX_GOAL:currentMode==='try'?EX_TRY:EXAMPLES;}
 const QUIZ_PTS={1:10,2:20,3:30};
 const QUIZ={
 spreadsheet:{
@@ -651,6 +684,73 @@ python:{
 }
 };
 
+const QUIZ_EXTRA=[
+["spreadsheet",1,[
+{q:{id:"Menghitung sel tidak kosong (termasuk teks)?",en:"Count non-empty cells (including text)?"},c:["=COUNTA(A1:A10)","=COUNT(A1:A10)","=COUNTIF(A1:A10)","=LEN(A1:A10)"],a:0},
+{q:{id:"Nilai terbesar dalam rentang?",en:"Largest value in a range?"},c:["=MAX(A1:A10)","=LARGE(A1:A10)","=TOP(A1:A10)","=BIG(A1:A10)"],a:0},
+{q:{id:"Nilai terkecil dalam rentang?",en:"Smallest value in a range?"},c:["=MIN(A1:A10)","=SMALL(A1:A10)","=LOW(A1:A10)","=BOTTOM(A1:A10)"],a:0},
+{q:{id:"Membulatkan angka ke 2 desimal?",en:"Round a number to 2 decimals?"},c:["=ROUND(A1, 2)","=ROUNDUP(A1)","=FIXED(A1)","=TRUNC(A1)"],a:0},
+{q:{id:"Menghitung jumlah karakter dalam sel?",en:"Count characters in a cell?"},c:["=LEN(A1)","=COUNT(A1)","=SIZE(A1)","=CHAR(A1)"],a:0}
+]],
+["spreadsheet",2,[
+{q:{id:"Menggabung banyak teks dengan pemisah?",en:"Join many texts with a separator?"},c:['=TEXTJOIN(", ", TRUE, A1:A3)',"=CONCAT(A1:A3)","=JOIN(A1:A3)","=MERGE(A1:A3)"],a:0},
+{q:{id:"Rata-rata dengan syarat?",en:"Average with a condition?"},c:["=AVERAGEIF(range, kriteria)","=AVGIF(range)","=MEANIF(range)","=AVERAGE(range)"],a:0},
+{q:{id:"Mengambil 3 huruf pertama dari teks?",en:"Take the first 3 letters of text?"},c:["=LEFT(A1, 3)","=MID(A1, 3)","=FIRST(A1, 3)","=START(A1, 3)"],a:0},
+{q:{id:"Menampilkan tanggal hari ini?",en:"Show today's date?"},c:["=TODAY()","=NOW()","=DATE()","=CURRENT()"],a:0,e:{id:"NOW() menyertakan jam; TODAY() hanya tanggal.",en:"NOW() includes time; TODAY() is date only."}},
+{q:{id:"Jika rumus error, tampilkan 0?",en:"If a formula errors, show 0?"},c:["=IFERROR(rumus, 0)","=ISERROR(rumus)","=IFNA(rumus)","=TRYCATCH(rumus)"],a:0}
+]],
+["spreadsheet",3,[
+{q:{id:"Menjumlah dengan banyak kriteria?",en:"Sum with multiple criteria?"},c:["=SUMIFS(sum, r1, k1, r2, k2)","=SUMIF(r, k)","=SUMPRODUCT(r)","=DSUM(r)"],a:0},
+{q:{id:"Pencarian fleksibel di Excel 365?",en:"Flexible lookup in Excel 365?"},c:["=XLOOKUP(nilai, cari, hasil)","=VLOOKUP(...)","=HLOOKUP(...)","=LOOKUP(...)"],a:0},
+{q:{id:"Menghitung sel dengan banyak kriteria?",en:"Count cells with multiple criteria?"},c:["=COUNTIFS(r1, k1, r2, k2)","=COUNTIF(r, k)","=DCOUNT(r)","=COUNT(r)"],a:0},
+{q:{id:"Mengambil posisi item dalam daftar?",en:"Get the position of an item in a list?"},c:["=MATCH(nilai, range, 0)","=INDEX(range)","=FIND(nilai)","=POS(nilai)"],a:0},
+{q:{id:"Referensi yang mengunci KOLOM saja?",en:"Reference that locks the COLUMN only?"},c:["$A1","A$1","$A$1","A1"],a:0}
+]],
+["sql",1,[
+{q:{id:"Memilih hanya kolom name dan age?",en:"Select only the name and age columns?"},c:["SELECT name, age FROM t;","SELECT (name, age) t;","GET name, age FROM t;","SELECT t.name+age;"],a:0},
+{q:{id:"Memberi nama lain (alias) pada kolom?",en:"Give a column an alias?"},c:["SELECT price AS harga","SELECT price ALIAS harga","SELECT price NAMED harga","SELECT price = harga"],a:0},
+{q:{id:"Mengurutkan dari besar ke kecil?",en:"Sort from large to small?"},c:["ORDER BY x DESC","ORDER BY x DOWN","ORDER BY x REVERSE","ORDER BY x HIGH"],a:0},
+{q:{id:"Menyaring nama yang diawali huruf A?",en:"Filter names starting with A?"},c:["WHERE name LIKE 'A%'","WHERE name = 'A%'","WHERE name STARTS 'A'","WHERE name IN 'A%'"],a:0},
+{q:{id:"Mengubah nilai data yang sudah ada?",en:"Change existing data values?"},c:["UPDATE t SET c=v WHERE ...","MODIFY t SET c=v","CHANGE t c=v","EDIT t SET c=v"],a:0}
+]],
+["sql",2,[
+{q:{id:"Menghitung rata-rata sebuah kolom?",en:"Average of a column?"},c:["SELECT AVG(price) FROM t;","SELECT MEAN(price);","SELECT AVERAGE(price);","SELECT MID(price);"],a:0},
+{q:{id:"Mengambil nilai maksimum?",en:"Get the maximum value?"},c:["SELECT MAX(col) FROM t;","SELECT TOP(col);","SELECT LARGEST(col);","SELECT HIGH(col);"],a:0},
+{q:{id:"Menghitung jumlah kota yang unik?",en:"Count the number of unique cities?"},c:["COUNT(DISTINCT city)","DISTINCT COUNT(city)","UNIQUE(city)","COUNT(UNIQUE city)"],a:0},
+{q:{id:"Menyaring nilai antara 10 dan 20?",en:"Filter values between 10 and 20?"},c:["WHERE x BETWEEN 10 AND 20","WHERE x RANGE 10,20","WHERE x IN 10..20","WHERE x FROM 10 TO 20"],a:0},
+{q:{id:"Menggabung dua tabel, hanya baris yang cocok?",en:"Join two tables, matching rows only?"},c:["INNER JOIN","FULL JOIN","CROSS JOIN","SELF JOIN"],a:0}
+]],
+["sql",3,[
+{q:{id:"Mengganti NULL menjadi 0 (MySQL)?",en:"Replace NULL with 0 (MySQL)?"},c:["IFNULL(col, 0)","NULLIF(col, 0)","ISNUM(col)","DEFAULT(col)"],a:0},
+{q:{id:"Memberi nomor urut tiap baris hasil?",en:"Number each result row sequentially?"},c:["ROW_NUMBER() OVER (ORDER BY ...)","COUNT() OVER ()","SERIAL()","INDEX()"],a:0},
+{q:{id:"Mengambil 10 baris teratas (SQL Server)?",en:"Take the top 10 rows (SQL Server)?"},c:["SELECT TOP 10 * FROM t","SELECT * FROM t LIMIT 10","WHERE ROWNUM <= 10","FETCH 10 ROWS"],a:0,e:{id:"SQL Server pakai TOP; MySQL pakai LIMIT.",en:"SQL Server uses TOP; MySQL uses LIMIT."}},
+{q:{id:"Menghapus duplikat dari hasil?",en:"Remove duplicates from results?"},c:["SELECT DISTINCT col","SELECT UNIQUE col","SELECT DEDUP col","SELECT col NODUP"],a:0},
+{q:{id:"Menggabung dua hasil TERMASUK duplikat?",en:"Combine two results INCLUDING duplicates?"},c:["UNION ALL","UNION","JOIN ALL","APPEND"],a:0}
+]],
+["python",1,[
+{q:{id:"Mengubah teks jadi huruf besar?",en:"Make text uppercase?"},c:['"halo".upper()','"halo".toupper()','"halo".caps()','"halo".big()'],a:0},
+{q:{id:"Mengubah string \"5\" menjadi angka?",en:"Convert the string \"5\" to a number?"},c:['int("5")','num("5")','str(5)','parse("5")'],a:0},
+{q:{id:"Tipe data untuk angka desimal?",en:"Data type for a decimal number?"},c:["float","double","decimal","number"],a:0},
+{q:{id:"Menggabungkan dua string?",en:"Join two strings?"},c:['"a" + "b"','"a" & "b"','"a" . "b"','concat("a","b")'],a:0},
+{q:{id:"Mengubah angka jadi teks?",en:"Convert a number to text?"},c:["str(5)","text(5)","string(5)","char(5)"],a:0}
+]],
+["python",2,[
+{q:{id:"Mengecek apakah kunci ada di dictionary?",en:"Check if a key exists in a dictionary?"},c:['"k" in d','d.has("k")','d.contains("k")','exists(d, "k")'],a:0},
+{q:{id:"Mengambil 3 elemen pertama dari list?",en:"Take the first 3 items of a list?"},c:["daftar[:3]","daftar[3:]","daftar[0,3]","first(daftar, 3)"],a:0},
+{q:{id:"Mengurutkan list di tempat?",en:"Sort a list in place?"},c:["daftar.sort()","daftar.order()","daftar.arrange()","daftar.asc()"],a:0},
+{q:{id:"Menggabung list jadi teks dipisah koma?",en:"Join a list into comma-separated text?"},c:['", ".join(daftar)','daftar.join(", ")','join(daftar, ", ")','concat(daftar)'],a:0},
+{q:{id:"Mengulang sambil tahu nomor urutnya?",en:"Loop while knowing the index?"},c:["for i, x in enumerate(daftar):","for i in count(daftar):","for x with i in daftar:","foreach(daftar, i):"],a:0}
+]],
+["python",3,[
+{q:{id:"Menyaring hanya angka positif dari list?",en:"Keep only positive numbers from a list?"},c:["[x for x in n if x > 0]","[x if x > 0 for x in n]","filter(n > 0)","[for x in n: x>0]"],a:0},
+{q:{id:"Fungsi dengan parameter bernilai default?",en:"Function with a default parameter?"},c:["def f(x, n=10):","def f(x, n:10):","def f(x, n==10):","function f(x, n=10)"],a:0},
+{q:{id:"Menangkap semua argumen posisional?",en:"Capture all positional arguments?"},c:["def f(*args):","def f(**args):","def f(args[]):","def f(&args):"],a:0},
+{q:{id:"Membaca seluruh isi file?",en:"Read the entire file contents?"},c:["f.read()","f.readall()","f.get()","f.load()"],a:0},
+{q:{id:"Menghitung 2 pangkat 3?",en:"Compute 2 to the power of 3?"},c:["2 ** 3","2 ^ 3","pow2(3)","2 ^^ 3"],a:0}
+]]
+];
+QUIZ_EXTRA.forEach(function(e){QUIZ[e[0]][e[1]]=QUIZ[e[0]][e[1]].concat(e[2]);});
+
 /* ════════════ STATE ════════════ */
 let currentPlatform='spreadsheet';
 let currentMode='ask';
@@ -704,7 +804,7 @@ function pillHTML(formula){
 
 function pl(base,plat){const s=plat==='sql'?'_sql':plat==='python'?'_python':'_sheet';return t('lbl_'+base+s);}
 function platIcon(plat){return plat==='python'?'🐍':plat==='sql'?'🗄️':'🔢';}
-function renderEntry(id, source){
+function renderEntry(id, source, userFormula){
   const d=KB[id];
   const plat=d.plat;
   const isSQL=plat==='sql';
@@ -714,7 +814,9 @@ function renderEntry(id, source){
 
   // ---- Block 1: formula ----
   let formulaInner='';
-  if(isCode){
+  if(userFormula){
+    formulaInner=pillHTML(userFormula);
+  } else if(isCode){
     formulaInner=pillHTML(isPy?f.python:f.sql);
   } else {
     const ex=f.excel, sh=f.sheets;
@@ -725,10 +827,11 @@ function renderEntry(id, source){
                   +'<div class="formula-variant-label" style="margin-top:12px"><span class="vi">📗</span>'+t('sheets_ver')+'</div>'+pillHTML(sh);
     }
   }
-  const exTxt=L(f.example);
+  const exTxt=userFormula?'':L(f.example);
   const exHTML=exTxt?'<div class="formula-example"><strong>'+t('example_word')+'</strong> <code>'+esc(exTxt)+'</code></div>':'';
   const sepHTML=(plat==='spreadsheet' && d.sepSensitive)?'<div class="sep-note">'+t('sep_note')+'</div>':'';
-  const b1='<div class="block b-formula"><div class="block-header"><span class="block-icon">'+platIcon(plat)+'</span><span class="block-label">'+pl('formula',plat)+'</span></div><div class="block-body">'+formulaInner+exHTML+sepHTML+'</div></div>';
+  const fLabel=userFormula?t('lbl_tryformula'):pl('formula',plat);
+  const b1='<div class="block b-formula"><div class="block-header"><span class="block-icon">'+platIcon(plat)+'</span><span class="block-label">'+fLabel+'</span></div><div class="block-body">'+formulaInner+exHTML+sepHTML+'</div></div>';
 
   // ---- Block 2: illustration ----
   let b2='';
@@ -765,8 +868,9 @@ function renderEntry(id, source){
     b4='<div class="block b-related"><div class="block-header"><span class="block-icon">🔗</span><span class="block-label">'+pl('related',plat)+'</span></div><div class="block-body"><div class="related-list">'+items+'</div></div></div>';
   }
 
+  const disc=userFormula?'<div class="try-disc">⚠️ '+t('try_disc')+'<br><button class="nf-btn" onclick="openSettings()">'+t('try_disc_btn')+'</button></div>':'';
   const tag=source==='ai'?'<span class="src-tag src-ai">AI</span>':'<span class="src-tag src-local">offline</span>';
-  appendEl('<div class="msg-ai"><div class="ai-header"><div class="ai-avatar">📊</div><span class="ai-name">Halodata</span>'+tag+'</div><div class="answer-blocks">'+b1+b2+b3+b4+'</div></div>');
+  appendEl('<div class="msg-ai"><div class="ai-header"><div class="ai-avatar">📊</div><span class="ai-name">Halodata</span>'+tag+'</div><div class="answer-blocks">'+b1+b2+b3+b4+disc+'</div></div>');
 }
 
 function showById(id){
@@ -796,6 +900,8 @@ function aiSystem(plat, mode){
     role='You are Halodata, a '+tool+' debugging helper for beginners. The user will paste '+noun+' that errors or returns the wrong result, possibly with an error message'+(isPy?'/traceback':'')+'. Diagnose clearly WHAT is wrong and WHY in expl.summary; put the CORRECTED, working '+noun+' in "formula"; in expl.anatomy list the specific fixes (each {part, meaning}); in expl.tip give one tip to avoid this next time; use illus for a small example if helpful.';
   } else if(mode==='goal'){
     role='You are Halodata, a '+tool+' solution mapper for beginners. The user describes the data/situation they have and the goal they want to achieve. Recommend the best approach: put a short plain-language plan in expl.summary; the recommended '+noun+' in "formula"; the step-by-step in expl.anatomy (each {part, meaning} as a numbered step); a small example in illus; alternatives in related.';
+  } else if(mode==='try'){
+    role='You are Halodata, a "try it yourself" evaluator for beginners. The user pastes an actual '+noun+'. Put their '+noun+' (cleaned/normalized) in "formula"; in illus show a concrete example INPUT and the resulting OUTPUT of running it (use small realistic sample data in the rows); in expl.summary state plainly WHAT it produces; in expl.anatomy break down each part of the syntax (each {part, meaning}); in expl.tip add one useful note; in related list other relevant '+(isSQL?'commands':isPy?'functions':'formulas')+'.';
   } else {
     role='You are Halodata, a '+tool+' helper for beginners. Answer the user\'s question with the right '+noun+', a clear explanation, and a small example.';
   }
@@ -833,7 +939,7 @@ async function askAI(query){
   const key=getKey(); if(!key){openSettings();return;}
   const plat=currentPlatform;
   const mode=currentMode;
-  const label=mode==='fix'?'Code/formula/query and error from the user:\n':mode==='goal'?"User's data/situation and goal:\n":'Question: ';
+  const label=mode==='fix'?'Code/formula/query and error from the user:\n':mode==='goal'?"User's data/situation and goal:\n":mode==='try'?'Formula/query/code the user wants to try:\n':'Question: ';
   showThinking(t('thinking_ai'));
   loading=true;document.getElementById('sendBtn').disabled=true;
   try{
@@ -861,6 +967,12 @@ function sendMessage(){
   const ta=document.getElementById('userInput');const text=ta.value.trim();if(!text)return;
   const wb=document.getElementById('welcomeBlock');if(wb)wb.remove();
   ta.value='';autoResize(ta);showUserMsg(text);
+  if(currentMode==='try'){
+    if(getKey()){askAI(text);ta.focus();return;}
+    const h=searchKBFormula(text,currentPlatform);
+    if(h){renderEntry(h,'local',text);ta.focus();return;}
+    showNotFound(text);ta.focus();return;
+  }
   if(currentMode==='fix'||currentMode==='goal'){
     if(!getKey()){showNeedKey();ta.focus();return;}
     askAI(text);ta.focus();return;
@@ -868,6 +980,23 @@ function sendMessage(){
   const hit=searchKB(text,currentPlatform);
   if(hit){renderEntry(hit,'local');ta.focus();return;}
   showNotFound(text);ta.focus();
+}
+function searchKBFormula(input, platform){
+  const isWord=function(w){return /^[a-z]+$/.test(w)&&w.length>=2;};
+  const toks=normalize(input).split(' ').filter(isWord);
+  if(!toks.length) return null;
+  const tset=new Set(toks);
+  let best=null,bestScore=0;
+  for(const id in KB){
+    const it=KB[id]; if(it.plat!==platform) continue;
+    const f=it.formula||{};
+    let hay=(f.excel||'')+' '+(f.sheets||'')+' '+(f.sql||'')+' '+(f.python||'')+' '+L(it.name)+' '+it.name.id+' '+it.name.en;
+    (it.kw||[]).forEach(function(k){hay+=' '+k;});
+    const hset=new Set(normalize(hay).split(' ').filter(isWord));
+    let score=0; tset.forEach(function(tk){ if(hset.has(tk)) score+=2; });
+    if(score>bestScore){bestScore=score;best=id;}
+  }
+  return bestScore>=2?best:null;
 }
 function showNeedKey(){
   appendEl('<div class="msg-ai"><div class="ai-header"><div class="ai-avatar">📊</div><span class="ai-name">Halodata</span></div><div class="notfound"><strong>'+t('needkey_title')+'</strong><br>'+t('needkey_body')+'<br><button class="nf-btn" onclick="openSettings()">'+t('needkey_btn')+'</button></div></div>');
@@ -903,7 +1032,7 @@ function setLang(l){
   applyStaticI18n();
   if(currentMode==='quiz')renderQuizStart();else renderWelcome();
 }
-function phText(){if(currentMode==='fix')return t('ph_fix');if(currentMode==='goal')return t('ph_goal');return currentPlatform==='python'?t('ph_python'):currentPlatform==='sql'?t('ph_sql'):t('ph_sheet');}
+function phText(){if(currentMode==='fix')return t('ph_fix');if(currentMode==='goal')return t('ph_goal');if(currentMode==='try')return t('ph_try');return currentPlatform==='python'?t('ph_python'):currentPlatform==='sql'?t('ph_sql'):t('ph_sheet');}
 function setPlaceholder(){const ta=document.getElementById('userInput');if(ta)ta.placeholder=phText();}
 function setPlatform(p){
   currentPlatform=p;
@@ -923,8 +1052,8 @@ function renderWelcome(){
   const isSQL=currentPlatform==='sql';
   const ex=modeExamples()[currentPlatform].map(e=>'<button class="example-btn" onclick="sendExample(this.dataset.q)" data-q="'+esc(L(e.q))+'"><span class="eicon">'+e.icon+'</span><span>'+esc(L(e.label))+'</span></button>').join('');
   const pSuf=currentPlatform==='python'?'_python':currentPlatform==='sql'?'_sql':'_sheet';
-  const title=currentMode==='fix'?t('welcome_title_fix'):currentMode==='goal'?t('welcome_title_goal'):t('welcome_title'+pSuf);
-  const sub=currentMode==='fix'?t('welcome_sub_fix'):currentMode==='goal'?t('welcome_sub_goal'):t('welcome_sub'+pSuf);
+  const title=currentMode==='fix'?t('welcome_title_fix'):currentMode==='goal'?t('welcome_title_goal'):currentMode==='try'?t('welcome_title_try'):t('welcome_title'+pSuf);
+  const sub=currentMode==='fix'?t('welcome_sub_fix'):currentMode==='goal'?t('welcome_sub_goal'):currentMode==='try'?t('welcome_sub_try'):t('welcome_sub'+pSuf);
   document.getElementById('chatArea').innerHTML='<div id="welcomeBlock"><p class="welcome-title">'+title+'</p><p class="welcome-sub">'+sub+'</p><p class="examples-label">'+t('examples_label')+'</p><div class="examples-grid">'+ex+'</div></div>';
 }
 
@@ -942,10 +1071,26 @@ function renderQuizStart(){
   }).join('');
   document.getElementById('chatArea').innerHTML='<div id="welcomeBlock" class="quiz-wrap"><p class="welcome-title">🎓 '+t('quiz_title')+'</p><p class="welcome-sub">'+t('quiz_sub').replace('{plat}',esc(quizPlatName(p)))+'</p><div class="quiz-levels">'+lvls+'</div></div>';
 }
+const QUIZ_N=5;
+function quizSeenKey(p,lv){return 'halodata_quizseen_'+p+'_'+lv;}
+function getQuizSeen(p,lv){try{return JSON.parse(localStorage.getItem(quizSeenKey(p,lv))||'[]')||[];}catch(e){return [];}}
+function setQuizSeen(p,lv,arr){try{localStorage.setItem(quizSeenKey(p,lv),JSON.stringify(arr));}catch(e){}}
 function startQuiz(lv){
   const p=currentPlatform;
-  const bank=(QUIZ[p]&&QUIZ[p][lv])?QUIZ[p][lv].slice():[];
-  for(let i=bank.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const tmp=bank[i];bank[i]=bank[j];bank[j]=tmp;}
+  const pool=(QUIZ[p]&&QUIZ[p][lv])?QUIZ[p][lv]:[];
+  const total=pool.length;
+  const n=Math.min(QUIZ_N,total);
+  // pick questions not seen yet; reset the cycle when not enough fresh ones remain
+  let seen=getQuizSeen(p,lv).filter(function(i){return i<total;});
+  let unseen=[]; for(let i=0;i<total;i++){ if(seen.indexOf(i)===-1) unseen.push(i); }
+  if(unseen.length<n){ seen=[]; unseen=[]; for(let i=0;i<total;i++) unseen.push(i); }
+  // shuffle unseen
+  for(let i=unseen.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const t=unseen[i];unseen[i]=unseen[j];unseen[j]=t;}
+  const chosen=unseen.slice(0,n);
+  setQuizSeen(p,lv,seen.concat(chosen));
+  // shuffle the chosen order too, and build question list
+  for(let i=chosen.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));const t=chosen[i];chosen[i]=chosen[j];chosen[j]=t;}
+  const bank=chosen.map(function(i){return pool[i];});
   quiz={plat:p,level:lv,idx:0,score:0,correct:0,qs:bank,answered:false};
   renderQuizQuestion();
 }
